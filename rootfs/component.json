@@ -1,0 +1,5 @@
+{
+    "name": "grd.rootfs",
+    "buildCommand": "make",
+    "dependencies": []
+}

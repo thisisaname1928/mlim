@@ -1,0 +1,7 @@
+{
+    "name": "grd.initramfs",
+    "buildCommand": "make",
+    "dependencies": [
+        "grd.init"
+    ]
+}

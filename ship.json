@@ -1,0 +1,7 @@
+{
+    "name": "mlim",
+    "dependencies": [
+        "grd.initramfs",
+        "grd.rootfs"
+    ]
+}

@@ -1,0 +1,5 @@
+{
+    "name": "grd.init",
+    "buildCommand": "go build .",
+    "dependencies": []
+}

@@ -1,0 +1,4 @@
+kernel
+bzImage
+grd.*
+initramfs/initramfs/init

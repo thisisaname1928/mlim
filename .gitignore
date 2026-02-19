@@ -3,3 +3,4 @@ bzImage
 grd.*
 initramfs/initramfs/init
 initramfs/initramfs.cpio.gz
+disk.img

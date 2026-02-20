@@ -1,0 +1,5 @@
+{
+    "name": "grd.umag",
+    "buildCommand": "go build .",
+    "dependencies": []
+}

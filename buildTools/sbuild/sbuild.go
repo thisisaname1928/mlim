@@ -84,7 +84,7 @@ func BuildComponent(c component) (string, error) {
 
 	if e != nil {
 		fmt.Println("Error: Build component '" + c.Name + "' fail!\n-----LOG-----")
-		fmt.Println(output)
+		fmt.Println(string(output))
 		return string(output), e
 	}
 
@@ -141,7 +141,11 @@ func Ship() error {
 				return errors.New("NO_COMPONENT")
 			}
 
-			BuildComponent(sc)
+			_, e = BuildComponent(sc)
+			if e != nil {
+
+				return e
+			}
 			sc.IsBuilt = true
 			csm[v] = sc
 		}

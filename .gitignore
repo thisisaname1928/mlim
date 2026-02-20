@@ -3,4 +3,5 @@ bzImage
 grd.*
 initramfs/initramfs/init
 initramfs/initramfs.cpio.gz
-disk.img
+rootfs/disk.img
+rootfs/rootfs/sbin/umag

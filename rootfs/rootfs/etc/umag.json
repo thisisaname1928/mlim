@@ -1,0 +1,22 @@
+{
+    "revision": 1,
+    "user": [
+        {
+            "name": "root",
+            "userID": 0,
+            "noLogin": false,
+            "passwordHash": "$2a$10$lJtBMWJNjcz5H5Mr.7D7Auk7ypqC/1yGrHIQYsZ7SbE6sEPj1LGEK",
+            "group": 0,
+            "isFree": false
+        },
+        {
+            "name": "mlim",
+            "userID": 1,
+            "noLogin": false,
+            "passwordHash": "$2a$10$BeKP9Gb5BEAtTg7axRySj.vwyN3bOFE6PIh9UHTKFT9cfbhsmY0wu",
+            "group": 1,
+            "isFree": false
+        }
+    ],
+    "freeUserList": []
+}

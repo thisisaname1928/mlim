@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"syscall"
 )
 
@@ -83,6 +84,22 @@ func main() {
 	}
 
 	fmt.Println("switch root ok!")
+
+	console, e := os.OpenFile("/dev/console", os.O_RDWR, 0)
+
+	if e != nil {
+		fmt.Println(e)
+	}
+	defer console.Close()
+
+	cmd := exec.Command("/sbin/umag")
+	cmd.Stdout = console
+	cmd.Stdin = console
+	cmd.Stderr = console
+	e = cmd.Run()
+	if e != nil {
+		fmt.Println(e)
+	}
 
 	for {
 	}

@@ -1,0 +1,5 @@
+{
+    "name": "grd.qbus",
+    "buildCommand": "go build .",
+    "dependencies": []
+}

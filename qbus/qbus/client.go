@@ -7,11 +7,14 @@ import (
 )
 
 type QBusClient struct {
-	sock net.Conn
+	DefName string
+	sock    net.Conn
 }
 
-func NewQBusClient() (QBusClient, error) {
+func NewQBusClient(DefName string) (QBusClient, error) {
 	var client QBusClient
+
+	client.DefName = DefName
 
 	return client, nil
 }
@@ -70,6 +73,25 @@ func (client *QBusClient) wait4Packet() (packet, error) {
 	return packet{PacketLength(packetLength), PacketType(packetType), buffer}, nil
 }
 
+func (client *QBusClient) wait4ResCode() uint32 {
+	packet, e := client.wait4Packet()
+	if e != nil {
+		return RES_CODE_NOT_OK
+	}
+
+	var rcode RCodePacket
+	e = convertToStruct(packet.PacketData, &rcode)
+	if e != nil {
+		return RES_CODE_NOT_OK
+	}
+
+	return rcode.ResCode
+}
+
+func (client *QBusClient) SubChannel(name string) {
+	client.Send(PACKET_SUB_ID, []byte(name))
+}
+
 func (client *QBusClient) Open() error {
 
 	sock, e := net.Dial("unix", QBUS_PATH)
@@ -81,7 +103,32 @@ func (client *QBusClient) Open() error {
 
 	defer sock.Close()
 
-	client.Send(PACKET_HANSHAKE_ID, convertToBytes(HandShakePacket{Magic: Magic}))
+	// do a handshake
+	client.Send(PACKET_HANDSHAKE_ID, convertToBytes(HandShakePacket{Magic: Magic}))
+	resCode := client.wait4ResCode()
+
+	if resCode != RES_CODE_OK {
+		fmt.Println("sus1")
+		return QBUS_CLIENT_CANT_SIGN
+	}
+	// sign def name
+	var defNamePacket DefNameSignPacket
+	defNamePacket = append(defNamePacket, []byte(client.DefName)...)
+	client.Send(PACKET_DEF_NAME_SIGN_ID, convertToBytes(defNamePacket))
+	resCode = client.wait4ResCode()
+
+	if resCode != RES_CODE_OK {
+		fmt.Println("sus")
+		return QBUS_CLIENT_CANT_SIGN
+	}
+
+	// test
+	client.SubChannel("com.qbusclient.test")
+
+	if resCode != RES_CODE_OK {
+		fmt.Println("sus")
+		return QBUS_CLIENT_CANT_SIGN
+	}
 
 	for {
 		packet, e := client.wait4Packet()

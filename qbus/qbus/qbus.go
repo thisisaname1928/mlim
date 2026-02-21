@@ -16,12 +16,13 @@ type client struct {
 	DefName       string
 	ExePath       string
 	ClientVersion uint32
-	SubscribeList []uint32
+	SubscribeList []uint32 // pid that subcribe to this client
 }
 
 type QBus struct {
 	Socket     net.Listener
 	ClientList map[uint32]client // use pid to access them
+	DefNameMap map[string]uint32 // use defname to search for pid
 }
 
 var QBUS_PATH = "../rootfs/rootfs/tmp/qbus"
@@ -30,8 +31,9 @@ var QBUS_ALREADY_STARTED = errors.New("QBUS_ALREADY_STARTED")
 var QBUS_CREATE_SOCKET_FAILED = errors.New("QBUS_CREATE_SOCKET_FAILED")
 var QBUS_OPEN_SOCKET_FAILED = errors.New("QBUS_OPEN_SOCKET_FAILED")
 var QBUS_BAD_PACKET_FORMAT = errors.New("QBUS_BAD_PACKET_FORMAT")
+var QBUS_CLIENT_CANT_SIGN = errors.New("QBUS_CLIENT_CANT_SIGN ")
 
-func getPeerPID(conn net.Conn) (int32, error) {
+func getPeerPID(conn net.Conn) (uint32, error) {
 	unixConn, ok := conn.(*net.UnixConn)
 	if !ok {
 		return 0, fmt.Errorf("not a unix connection")
@@ -48,7 +50,7 @@ func getPeerPID(conn net.Conn) (int32, error) {
 		return 0, err
 	}
 
-	return cred.Pid, nil
+	return uint32(cred.Pid), nil
 }
 
 func convertToBytes(inp any) []byte {
@@ -80,6 +82,7 @@ func QBusInit() (QBus, error) {
 	var bus QBus
 
 	bus.ClientList = make(map[uint32]client, 50) // pre alloc for faster access
+	bus.DefNameMap = make(map[string]uint32, 50) // pre alloc for faster access
 
 	// check if qbus available
 	if _, err := os.Stat(QBUS_PATH); err == nil {
@@ -159,13 +162,16 @@ func (bus *QBus) handleConnection(conn net.Conn) {
 	}
 }
 
+// packet def
+
 const Magic uint32 = 1111
 
 const (
 	NOTHING = iota
-	PACKET_HANSHAKE_ID
+	PACKET_HANDSHAKE_ID
 	PACKET_RCODE_ID
 	PACKET_DEF_NAME_SIGN_ID
+	PACKET_SUB_ID
 )
 
 type HandShakePacket struct {
@@ -178,11 +184,15 @@ type RCodePacket struct {
 }
 
 type DefNameSignPacket []byte
+type SubPacket []byte
 
 const (
 	RES_CODE_NOTHING = iota
 	RES_CODE_OK
 	RES_CODE_NOT_OK
+	RES_CODE_DEF_NAME_ALREADY_USED
+	RES_CODE_PERMISSION_DENIED
+	RES_CODE_NO_CHANNEL
 )
 
 func sendRCode(conn net.Conn, code uint32) {
@@ -205,11 +215,10 @@ func Send(sock net.Conn, packetType uint32, packet any) {
 
 func (bus *QBus) handlePacket(conn net.Conn, packetType PacketType, packet []byte) {
 	switch packetType {
-	case PACKET_HANSHAKE_ID:
+	case PACKET_HANDSHAKE_ID:
 		// read
 		var curPacket HandShakePacket
-		reader := bytes.NewReader(packet)
-		e := binary.Read(reader, binary.LittleEndian, &curPacket)
+		e := convertToStruct(packet, &curPacket)
 
 		if e != nil {
 			sendRCode(conn, RES_CODE_NOT_OK)
@@ -226,9 +235,48 @@ func (bus *QBus) handlePacket(conn net.Conn, packetType PacketType, packet []byt
 		bus.ClientList[uint32(pid)] = client{Socket: conn}
 
 		sendRCode(conn, RES_CODE_OK)
+	case PACKET_DEF_NAME_SIGN_ID:
+		fmt.Println(string(packet), " sign!")
+		v, ok := bus.DefNameMap[string(packet)]
+		pid, _ := getPeerPID(conn)
+
+		if ok {
+			if v != pid {
+				sendRCode(conn, RES_CODE_DEF_NAME_ALREADY_USED)
+				break
+			}
+			bus.DefNameMap[string(packet)] = pid
+			sendRCode(conn, RES_CODE_OK)
+		} else {
+			bus.DefNameMap[string(packet)] = pid
+			sendRCode(conn, RES_CODE_OK)
+		}
+	case PACKET_SUB_ID:
+		pid, e := getPeerPID(conn)
+
+		if e != nil {
+			sendRCode(conn, RES_CODE_NOT_OK)
+			break
+		}
+
+		v, ok := bus.DefNameMap[string(packet)]
+
+		// prevent it sub to it self
+		// if v == pid {
+		// 	sendRCode(conn, RES_CODE_OK)
+		// 	break
+		// }
+
+		if !ok {
+			sendRCode(conn, RES_CODE_NO_CHANNEL)
+			break
+		}
+
+		c := bus.ClientList[v]
+		c.SubscribeList = append(c.SubscribeList, pid)
+		bus.ClientList[v] = c
+		sendRCode(conn, RES_CODE_OK)
 	default:
 
 	}
-
-	fmt.Println(string(packet))
 }

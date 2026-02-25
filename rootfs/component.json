@@ -1,7 +1,5 @@
 {
     "name": "grd.rootfs",
     "buildCommand": "make",
-    "dependencies": [
-        "grd.umag"
-    ]
+    "dependencies": []
 }
